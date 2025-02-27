@@ -15,6 +15,7 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="0.10.18" />
+    <ProjectReference Include="..\FFmpegView.Bass\FFmpegView.Bass.csproj" />
     <ProjectReference Include="..\FFmpegView.Shared\FFmpegView.Shared.csproj" />
   </ItemGroup>
 </Project>

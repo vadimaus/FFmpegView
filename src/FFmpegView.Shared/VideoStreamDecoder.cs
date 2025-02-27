@@ -38,14 +38,20 @@ namespace FFmpegView
         public int FrameWidth { get; private set; }
         public int FrameHeight { get; private set; }
         public bool IsPlaying { get; private set; }
+        public bool IsInitialized { get; private set; }
         public MediaState State { get; private set; }
         public TimeSpan Position => clock.Elapsed + OffsetClock;
-        public TimeSpan frameDuration { get; private set; }
+
+        public TimeSpan FrameDuration { get; private set; }
+
+        public TimeSpan StartTime { get; private set; }
         #endregion
+
         public VideoStreamDecoder()
         {
             Headers = new Dictionary<string, string>();
         }
+
         public void InitDecodecVideo(string uri)
         {
             try
@@ -57,6 +63,7 @@ namespace FFmpegView
                     SendMsg(MsgType.Information, "Failed to create media format (container)");
                     return;
                 }
+
                 var tempFormat = format;
                 AVDictionary* options = Headers.ToHeader();
                 error = ffmpeg.avformat_open_input(&tempFormat, uri, null, &options);
@@ -65,14 +72,17 @@ namespace FFmpegView
                     SendMsg(MsgType.Information, "Failed to open video");
                     return;
                 }
+
                 ffmpeg.avformat_find_stream_info(format, null);
                 AVCodec* codec = null;
                 videoStreamIndex = ffmpeg.av_find_best_stream(format, AVMediaType.AVMEDIA_TYPE_VIDEO, -1, -1, &codec, 0);
+
                 if (videoStreamIndex < 0)
                 {
                     SendMsg(MsgType.Information, "No video stream found");
                     return;
                 }
+
                 videoStream = format->streams[videoStreamIndex];
                 codecContext = ffmpeg.avcodec_alloc_context3(codec);
                 error = ffmpeg.avcodec_parameters_to_context(codecContext, videoStream->codecpar);
@@ -81,25 +91,32 @@ namespace FFmpegView
                     SendMsg(MsgType.Information, "Failed to set decoder parameters");
                     return;
                 }
+
                 error = ffmpeg.avcodec_open2(codecContext, codec, null);
                 if (error < 0)
                 {
                     SendMsg(MsgType.Information, "Failed to open decoder");
                     return;
                 }
-                Duration = TimeSpan.FromMilliseconds(format->duration / 1000);
+
+                StartTime = videoStream->start_time.ToTimeSpan(videoStream->time_base);
+                Duration = videoStream->duration.ToTimeSpan(videoStream->time_base);
                 CodecId = videoStream->codecpar->codec_id.ToString();
                 CodecName = ffmpeg.avcodec_get_name(videoStream->codecpar->codec_id);
                 Bitrate = (int)videoStream->codecpar->bit_rate;
                 FrameRate = ffmpeg.av_q2d(videoStream->r_frame_rate);
-                FrameWidth = videoStream->codecpar->width;
-                FrameHeight = videoStream->codecpar->height;
-                frameDuration = TimeSpan.FromMilliseconds(1000 / FrameRate);
+                FrameWidth = codecContext->width;
+                FrameHeight = codecContext->height;
+                FrameDuration = TimeSpan.FromMilliseconds(1000 / FrameRate);
+
                 var result = InitConvert(FrameWidth, FrameHeight, codecContext->pix_fmt, FrameWidth, FrameHeight, AVPixelFormat.AV_PIX_FMT_BGR0);
                 if (result)
                 {
                     packet = ffmpeg.av_packet_alloc();
                     frame = ffmpeg.av_frame_alloc();
+
+                    IsInitialized = true;
+                    State = MediaState.Read;
                 }
             }
             catch (Exception ex)
@@ -107,6 +124,7 @@ namespace FFmpegView
                 SendMsg(MsgType.Error, $"FFmpeg InitDecodecVideo Failed: {ex.Message}");
             }
         }
+
         private void SendMsg(MsgType type, string msg) => MediaMsgRecevice?.Invoke(type, msg);
         private bool InitConvert(int sourceWidth, int sourceHeight, AVPixelFormat sourceFormat, int targetWidth, int targetHeight, AVPixelFormat targetFormat)
         {
@@ -118,11 +136,13 @@ namespace FFmpegView
                     SendMsg(MsgType.Information, "Failed to create converter");
                     return false;
                 }
+
                 var bufferSize = ffmpeg.av_image_get_buffer_size(targetFormat, targetWidth, targetHeight, 1);
                 FrameBufferPtr = Marshal.AllocHGlobal(bufferSize);
                 TargetData = new byte_ptrArray4();
                 TargetLinesize = new int_array4();
                 ffmpeg.av_image_fill_arrays(ref TargetData, ref TargetLinesize, (byte*)FrameBufferPtr, targetFormat, targetWidth, targetHeight, 1);
+
                 return true;
             }
             catch (Exception ex)
@@ -131,6 +151,7 @@ namespace FFmpegView
                 return false;
             }
         }
+
         public AVFrame FrameConvert(AVFrame* sourceFrame)
         {
             ffmpeg.sws_scale(convert, sourceFrame->data, sourceFrame->linesize, 0, sourceFrame->height, TargetData, TargetLinesize);
@@ -138,6 +159,7 @@ namespace FFmpegView
             data.UpdateFrom(TargetData);
             var linesize = new int_array8();
             linesize.UpdateFrom(TargetLinesize);
+
             return new AVFrame
             {
                 data = data,
@@ -146,6 +168,7 @@ namespace FFmpegView
                 height = FrameHeight
             };
         }
+
         public bool TryReadNextFrame(out AVFrame outFrame)
         {
             try
@@ -157,7 +180,7 @@ namespace FFmpegView
                 }
                 else
                 {
-                    if (Position - lastTime >= frameDuration)
+                    if (Position - lastTime >= FrameDuration)
                     {
                         lastTime = Position;
                         isNextFrame = true;
@@ -207,13 +230,15 @@ namespace FFmpegView
                 return false;
             }
         }
-        private void StopPlay()
+
+        private bool StopPlay()
         {
             try
             {
                 lock (SyncLock)
                 {
-                    if (State == MediaState.None) return;
+                    if (State == MediaState.None) return false;
+
                     IsPlaying = false;
                     OffsetClock = TimeSpan.FromSeconds(0);
                     clock.Reset();
@@ -231,7 +256,7 @@ namespace FFmpegView
                     ffmpeg.sws_freeContext(convert);
                     videoStream = null;
                     videoStreamIndex = -1;
-                    Duration = TimeSpan.FromMilliseconds(0);
+                    //Duration = TimeSpan.FromMilliseconds(0);
                     CodecName = string.Empty;
                     CodecId = string.Empty;
                     Bitrate = 0;
@@ -243,28 +268,37 @@ namespace FFmpegView
                     lastTime = TimeSpan.Zero;
                     MediaCompleted?.Invoke(Duration);
                 }
+
+                return true;
             }
             catch (Exception ex)
             {
                 SendMsg(MsgType.Information, $"FFmpeg : Failed to stop ({ex.Message})");
             }
+
+            return false;
         }
-        public bool SeekProgress(int seekTime)
+        public bool SeekProgress(TimeSpan seekTime)
         {
             try
             {
                 if (format == null || videoStream == null)
                     return false;
+
                 lock (SyncLock)
                 {
-                    IsPlaying = false;
                     clock.Stop();
-                    var timestamp = seekTime / ffmpeg.av_q2d(videoStream->time_base);
+                    clock.Reset();
+
+                    var timeBase = videoStream->time_base;
+                    var timestamp = seekTime.ToLong(timeBase);
+
                     ffmpeg.av_seek_frame(format, videoStreamIndex, (long)timestamp, ffmpeg.AVSEEK_FLAG_BACKWARD | ffmpeg.AVSEEK_FLAG_FRAME);
                     ffmpeg.av_frame_unref(frame);
                     ffmpeg.av_packet_unref(packet);
                     int error = 0;
                     receiveFrame();
+
                     void receiveFrame()
                     {
                         while (packet->pts < timestamp)
@@ -275,17 +309,20 @@ namespace FFmpegView
                                 {
                                     ffmpeg.av_packet_unref(packet);
                                     error = ffmpeg.av_read_frame(format, packet);
+
                                     if (error == ffmpeg.AVERROR_EOF)
                                         return;
+
                                 } while (packet->stream_index != videoStreamIndex);
+
                                 ffmpeg.avcodec_send_packet(codecContext, packet);
                                 error = ffmpeg.avcodec_receive_frame(codecContext, frame);
+
                             } while (error == ffmpeg.AVERROR(ffmpeg.EAGAIN));
                         }
                     }
-                    OffsetClock = TimeSpan.FromSeconds(seekTime);
-                    clock.Restart();
-                    IsPlaying = true;
+
+                    OffsetClock = seekTime;
                     lastTime = TimeSpan.Zero;
                 }
                 return true;
@@ -296,6 +333,7 @@ namespace FFmpegView
                 return false;
             }
         }
+
         public bool Play()
         {
             try
@@ -305,6 +343,7 @@ namespace FFmpegView
                     SendMsg(MsgType.Information, "FFmpeg : dosnot initialize device");
                     return false;
                 }
+
                 if (State != MediaState.Play)
                 {
                     clock.Start();
@@ -320,6 +359,7 @@ namespace FFmpegView
                 return false;
             }
         }
+
         public bool Pause()
         {
             try
@@ -341,11 +381,12 @@ namespace FFmpegView
                 return false;
             }
         }
-        public void Stop()
+        public bool Stop()
         {
             if (State == MediaState.None)
-                return;
-            StopPlay();
+                return false;
+
+            return StopPlay();
         }
     }
 }

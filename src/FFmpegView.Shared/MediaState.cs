@@ -6,5 +6,7 @@
         Read,
         Play,
         Pause,
+        IsSeeking,
+        IsSeekable
     }
 }

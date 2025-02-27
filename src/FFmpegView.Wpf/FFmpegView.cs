@@ -24,6 +24,7 @@ namespace FFmpegView.Wpf
         private WriteableBitmap writeableBitmap;
         private readonly VideoStreamDecoder video;
         private CancellationTokenSource cancellationToken;
+       
         public FFmpegView()
         {
             image = new Image();
@@ -34,6 +35,7 @@ namespace FFmpegView.Wpf
             video.MediaMsgRecevice += Video_MediaMsgRecevice;
             isInit = Init();
         }
+        
         private void Video_MediaMsgRecevice(MsgType type, string msg) =>
             Debug.WriteLine($"{(type == MsgType.Error ? "Error: " : "Info: ")}{msg}");
         public void SetAudioHandler(AudioStreamDecoder decoder) => audio = decoder;
@@ -89,6 +91,7 @@ namespace FFmpegView.Wpf
             }
             return state;
         }
+
         public bool Play(string uri, Dictionary<string, string> headers = null)
         {
             if (!isInit)
@@ -118,7 +121,7 @@ namespace FFmpegView.Wpf
             return state;
         }
         public void SetHeader(Dictionary<string, string> headers) => video.Headers = headers;
-        public bool SeekTo(int seekTime)
+        public bool SeekTo(TimeSpan seekTime)
         {
             try
             {

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace FFmpegView
 {
@@ -7,7 +8,7 @@ namespace FFmpegView
         bool Play();
         bool Stop();
         bool Pause();
-        bool SeekTo(int seekTime);
+        bool SeekTo(TimeSpan seekTime);
         void SetHeader(Dictionary<string, string> headers);
         bool Play(string uri, Dictionary<string, string> headers = null);
     }

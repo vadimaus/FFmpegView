@@ -29,8 +29,7 @@ namespace FFmpegView.Bass
                             dllPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "libbass.so");
                             if (!File.Exists(dllPath))
                             {
-                                var platform = $"linux-{PlantformUntils.ArchitectureString}";
-                                sourceFileName = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "libBass", platform, "libbass.so");
+                                sourceFileName = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Lib", "libBass", "linux", "libbass.so");
                             }
                             break;
                         }
@@ -38,23 +37,16 @@ namespace FFmpegView.Bass
                         {
                             dllPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "libbass.dylib");
                             if (!File.Exists(dllPath))
-                                sourceFileName = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "libBass", "osx", "libbass.dylib");
+                                sourceFileName = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Lib", "libBass", "osx", "libbass.dylib");
                             break;
                         }
                     case Platforms.Windows:
                         {
                             dllPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "bass.dll");
+                            
                             if (!File.Exists(dllPath))
-                            {
-                                var platform = $"win-{PlantformUntils.ArchitectureString}";
-                                if (platform.Equals("win-arm", StringComparison.CurrentCultureIgnoreCase))
-                                {
-                                    canInit = false;
-                                    Debug.WriteLine("Bass cannot run in win-arm platform.Stop init.");
-                                }
-                                else
-                                    sourceFileName = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "libBass", platform, "bass.dll");
-                            }
+                                sourceFileName = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Lib", "libBass", "win", "bass.dll");
+
                             break;
                         }
                 }

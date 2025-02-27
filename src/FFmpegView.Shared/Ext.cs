@@ -1,7 +1,6 @@
 ﻿using FFmpeg.AutoGen;
 using System;
 using System.Collections.Generic;
-using System.Runtime.InteropServices;
 using System.Text;
 
 namespace FFmpegView
@@ -20,18 +19,25 @@ namespace FFmpegView
             ffmpeg.av_dict_set(&options, "headers", builder.ToString(), 0);
             return options;
         }
-        public static unsafe string av_strerror(int error)
+
+        public static long ToLong(this TimeSpan ts, AVRational timeBase)
         {
-            var bufferSize = 1024;
-            var buffer = stackalloc byte[bufferSize];
-            ffmpeg.av_strerror(error, buffer, (ulong)bufferSize);
-            return Marshal.PtrToStringAnsi((IntPtr)buffer);
+            return Convert.ToInt64(ts.TotalSeconds * timeBase.den / timeBase.num); // (secs) * (units) / (secs) = (units)
         }
-        public static int ThrowExceptionIfError(this int error)
+
+        public static TimeSpan ToTimeSpan(this long pts, AVRational timeBase)
         {
-            if (error < 0)
-                throw new ApplicationException(av_strerror(error));
-            return error;
+            return Convert.ToDouble(pts).ToTimeSpan(timeBase);
+        }
+
+        public static TimeSpan ToTimeSpan(this double pts, AVRational timeBase)
+        {
+            if (double.IsNaN(pts) || Math.Abs(pts - ffmpeg.AV_NOPTS_VALUE) <= double.Epsilon)
+                return TimeSpan.MinValue;
+
+            return TimeSpan.FromTicks(timeBase.den == 0 ?
+                Convert.ToInt64(TimeSpan.TicksPerMillisecond * 1000 * pts / ffmpeg.AV_TIME_BASE) :
+                Convert.ToInt64(TimeSpan.TicksPerMillisecond * 1000 * pts * timeBase.num / timeBase.den));
         }
     }
 }

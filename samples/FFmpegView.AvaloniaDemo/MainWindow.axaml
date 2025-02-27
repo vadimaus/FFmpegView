@@ -2,8 +2,87 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:FFmpegView.AvaloniaDemo.Models"
         mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="250"
         x:Class="FFmpegView.AvaloniaDemo.MainWindow"
-        Title="FFmpegView.AvaloniaDemo">
-	<FFmpegView x:Name="playerView" />
+        xmlns:player="clr-namespace:FFmpegView;assembly=FFmpegView.Avalonia"
+        Title="FFmpegView.AvaloniaDemo"
+        ShowInTaskbar="True"
+        WindowState="Normal"
+        ExtendClientAreaToDecorationsHint="True"
+        Background="#0E1621">
+
+  <Design.DataContext>
+    <vm:MainWindowViewModel/>
+  </Design.DataContext>   
+  
+  <Grid>
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="*"/>
+    </Grid.ColumnDefinitions>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="35"/>
+      <RowDefinition Height="*"/>
+    </Grid.RowDefinitions>
+    <Panel Grid.Row="0">
+      <Button Name="openFileBtn"
+                      Click="OnOpenFileClick"
+                     Margin="10, 10, 10, 0" Background="#17212B"
+                     IsEnabled="{Binding IsPlayEnabled}">
+        <PathIcon Data="{StaticResource folder_open}" />
+      </Button>
+    </Panel>
+    <Border Grid.Row="1" Margin="10" BorderBrush="#17212B" BorderThickness="1" CornerRadius="3">
+      <Grid Name="Player">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+          <RowDefinition Height="*"/>
+          <RowDefinition Height="0"/>
+          <RowDefinition Height="55"/>
+          <RowDefinition Height="40"/>
+        </Grid.RowDefinitions>
+
+        <player:FFmpegView x:Name="Media" />
+        <StackPanel Grid.Row="2" Orientation="Vertical" Background="#17212B" ZIndex="1">
+          <Panel>
+            <Slider Name="PositionSlider" Cursor="Hand" Height="45" IsVisible="True"
+                  IsEnabled="{Binding SeekBarVisible}"
+                  IsSnapToTickEnabled="False"
+                  Minimum="{Binding PlaybackStartTime}"
+                  Maximum="{Binding PlaybackEndTime}"
+                  Value="{Binding Position, Mode=TwoWay}">
+            </Slider>
+          </Panel>
+          <StackPanel IsVisible="True" Orientation="Horizontal" Margin="10">
+            <TextBlock Text="{Binding Position, StringFormat={}{0:0000.0}}}" Width="40" FontSize="11"></TextBlock>
+            <TextBlock Text="/" Margin="0, 0, 3, 0" FontSize="11"></TextBlock>
+            <TextBlock Text="{Binding PlaybackEndTime, StringFormat={}{0:0000.0}}}}" Width="40" FontSize="11"></TextBlock>
+          </StackPanel>
+        </StackPanel>
+
+        <Grid Grid.Row="3" Background="#17212B" ZIndex="0">
+          <DockPanel HorizontalAlignment="Center" VerticalAlignment="Top">
+
+            <DockPanel Width="160">
+              <Button Name="playBtn"
+                      Click="OnPlayClick"
+                      Margin="0, 0, 10, 0" Background="#17212B"
+                      IsEnabled="{Binding IsPlayEnabled}">
+                <PathIcon Data="{StaticResource PlayIcon}" />
+              </Button>
+              <Button Name="pauseBtn" Click="OnPauseClick" Background="#17212B" Margin="0, 0, 10, 0">
+                <PathIcon Data="{StaticResource PauseIcon}" />
+              </Button>
+              <Button Name="stopBtn" Click="OnStopClick" Background="#17212B">
+                <PathIcon Data="{StaticResource StopIcon}" />
+              </Button>
+            </DockPanel>
+          </DockPanel>
+        </Grid>
+        
+      </Grid>
+    </Border>
+  </Grid>
 </AeroWindow>

@@ -91,7 +91,7 @@ namespace FFmpegView.Wpf
             }
             return state;
         }
-        public bool SeekTo(int seekTime)
+        public bool SeekTo(TimeSpan seekTime)
         {
             try
             {
