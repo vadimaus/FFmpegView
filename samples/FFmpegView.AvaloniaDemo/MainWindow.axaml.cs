@@ -1,14 +1,10 @@
 using Avalonia.Controls;
-using Avalonia.Dialogs;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
-using Avalonia.Threading;
 using FFmpegView.Avalonia;
 using FFmpegView.Bass;
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Numerics;
 
 namespace FFmpegView.AvaloniaDemo
 {
@@ -24,6 +20,7 @@ namespace FFmpegView.AvaloniaDemo
             DataContext = App.ViewModel;
 
             var media = this.FindControl<FFmpegView>("Media");
+            media.SetAudioHandler(new BassAudioStreamDecoder());
             media.PositionChanged += OnMediaPositionChanged;
         }
 

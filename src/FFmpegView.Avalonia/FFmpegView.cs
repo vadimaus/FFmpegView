@@ -10,7 +10,6 @@ using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Avalonia.Threading;
 using FFmpegView.Avalonia;
-using FFmpegView.Bass;
 using PCLUntils.Objects;
 using System;
 using System.Collections.Generic;
@@ -167,8 +166,8 @@ namespace FFmpegView
             video = new VideoStreamDecoder();
             video.Headers = new Dictionary<string, string> { { "User-Agent", "ffmpeg_demo" } };
 
-            audio = new BassAudioStreamDecoder();
-            audio.Headers = new Dictionary<string, string> { { "User-Agent", "ffmpeg_demo" } };
+            //audio = new BassAudioStreamDecoder();
+            //audio.Headers = new Dictionary<string, string> { { "User-Agent", "ffmpeg_demo" } };
 
             timeout = TimeSpan.FromTicks(10000);
             video.MediaCompleted += VideoMediaCompleted;

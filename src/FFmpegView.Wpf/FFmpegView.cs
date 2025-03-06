@@ -185,7 +185,7 @@ namespace FFmpegView.Wpf
                             if (audio?.IsPlaying == true)
                             {
                                 if (audio?.TryPlayNextFrame() == true)
-                                    Thread.Sleep(audio.frameDuration.Subtract(timeout));
+                                    Thread.Sleep(audio.FrameDuration.Subtract(timeout));
                             }
                             else
                                 Thread.Sleep(10);
